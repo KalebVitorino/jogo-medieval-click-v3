@@ -1,0 +1,60 @@
+name: Publicar Jogo V3
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar arquivos do repositório
+        uses: actions/checkout@v6
+
+      - name: Extrair jogo
+        run: |
+          mkdir -p extracted
+          mkdir -p site
+
+          ZIP=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+
+          if [ -z "$ZIP" ]; then
+            echo "Nenhum arquivo ZIP encontrado."
+            exit 1
+          fi
+
+          unzip -q "$ZIP" -d extracted
+
+          INDEX=$(find extracted -type f -name "index.html" | head -n 1)
+
+          if [ -z "$INDEX" ]; then
+            echo "index.html não encontrado dentro do ZIP."
+            exit 1
+          fi
+
+          ROOT=$(dirname "$INDEX")
+          cp -a "$ROOT"/. site/
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Preparar arquivos
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Publicar jogo
+        id: deployment
+        uses: actions/deploy-pages@v4
